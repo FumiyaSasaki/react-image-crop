@@ -1,95 +1,64 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+'use client';
+import 'react-image-crop/dist/ReactCrop.css';
+import ReactCrop, { Crop } from 'react-image-crop';
+import { useCallback, useState } from 'react';
+import { Button } from '@mui/material';
+import { Scale2D, Size2D, calcCanvasSize, calcImageScale } from '@/helpers/cropHelper';
 
 export default function Home() {
-  return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+  const [crop, setCrop] = useState<Crop>({
+    unit: 'px',
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+  });
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [resizedImageUrl, setResizedImageUrl] = useState<string>('');
+  const [image, setImage] = useState<HTMLImageElement>();
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+  const onChangeImage = async (e: any) => setImageUrl(URL.createObjectURL(e.target.files[0]));
 
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
+  const onLoad = useCallback((image: React.SyntheticEvent<HTMLImageElement>) =>
+    setImage(image.currentTarget), []);
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
+  const onCreateCropedImageUrl = async () => {
+    if (image) {
+      const canvas = document.createElement('canvas');
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore the Next.js 13 playground.</p>
-        </a>
+      const imageScale: Scale2D = { x: 0, y: 0 };
+      imageScale.x = image!.naturalWidth / image!.width;
+      imageScale.y = image!.naturalHeight / image!.height;
+      
+      canvas.width = crop.width * imageScale.x;
+      canvas.height = crop.height * imageScale.x;
+      const context2d: CanvasRenderingContext2D = canvas.getContext('2d') as CanvasRenderingContext2D;
+      context2d.drawImage(
+        image,
+        crop.x * imageScale.x,
+        crop.y * imageScale.y,
+        crop.width * imageScale.x,
+        crop.height * imageScale.y,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+      const imgUrl: string = canvas.toDataURL('image/jpeg', 0.5);
+      setResizedImageUrl(imgUrl);
+    }
+  };
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
-}
+  return (<>
+    <Button variant='contained' component='label' >
+      画像追加<input type='file' hidden onChange={onChangeImage} />
+    </Button>
+    <Button onClick={onCreateCropedImageUrl}>切り取り</Button>
+    <ReactCrop crop={crop} onChange={c => setCrop(c)}>
+      <img src={imageUrl} onLoad={onLoad} />
+    </ReactCrop>
+    {resizedImageUrl &&
+      <img src={resizedImageUrl} style={{ width: '200px', height: '200px' }} />}
+  </>
+  );
+};
